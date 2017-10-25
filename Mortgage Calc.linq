@@ -20,7 +20,10 @@ let term = 25.00
 let fixedTerm = 5.00
 
 // Overpayments
-let overPayments = [(10.00, -500.00)] |> Map.ofList
+let overPayments = Map.ofList [
+                       (26.00, -500.00)
+                       (31.00, -500.00)
+                   ]
 
 // Pre-calculations
 let numberOfPayments = term * 12.00
