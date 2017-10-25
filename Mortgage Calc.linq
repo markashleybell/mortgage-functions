@@ -20,7 +20,7 @@ let term = 25.00
 let fixedTerm = 5.00
 
 // Overpayments
-let overPayments = [(10.00, 500.00)] |> Map.ofList
+let overPayments = [(10.00, -500.00)] |> Map.ofList
 
 // Pre-calculations
 let numberOfPayments = term * 12.00
@@ -56,7 +56,7 @@ let (results, _) = (periods
                     |> List.mapFold (fun balance paymentSlot ->
                                         let (period, numPeriods, interestRate, overPayment) = paymentSlot
                                         let (pmt, ipmt, ppmt) = calculatePayment interestRate numPeriods balance 1.00
-                                        let newBalance = balance + ppmt
+                                        let newBalance = balance + ppmt + overPayment
                                         ((int period, pmt, ipmt, ppmt, newBalance), newBalance)) principal
                     )
                     
