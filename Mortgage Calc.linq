@@ -67,6 +67,3 @@ results
 |> List.map writeRow
 |> Dump
 |> ignore
-
-
-
