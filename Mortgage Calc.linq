@@ -33,10 +33,11 @@ let numberOfVariablePayments = numberOfPayments - numberOfFixedPayments
 let fixedRateMonthlyInterest = (fixedRate / 100.00) / 12.00
 let variableRateMonthlyInterest = (variableRate / 100.00) / 12.00
 
-let calculatePayment rate numPeriods principal period =
-    let pmt = Financial.Pmt(rate, numPeriods, principal, fv, typ)
-    let ipmt = Financial.IPmt(rate, period, numPeriods, principal, fv, typ)
-    let ppmt = Financial.PPmt(rate, period, numPeriods, principal, fv, typ)
+let calculatePayment rate numPeriods principal period overPayment =
+    let p = principal + overPayment
+    let pmt = Financial.Pmt(rate, numPeriods, p, fv, typ)
+    let ipmt = Financial.IPmt(rate, period, numPeriods, p, fv, typ)
+    let ppmt = Financial.PPmt(rate, period, numPeriods, p, fv, typ)
     (pmt, ipmt, ppmt)
 
 let periods = [1.00..numberOfPayments]
@@ -58,7 +59,7 @@ let writeRow row =
 let (results, _) = (periods 
                     |> List.mapFold (fun balance paymentSlot ->
                                         let (period, numPeriods, interestRate, overPayment) = paymentSlot
-                                        let (pmt, ipmt, ppmt) = calculatePayment interestRate numPeriods balance 1.00
+                                        let (pmt, ipmt, ppmt) = calculatePayment interestRate numPeriods balance 1.00 overPayment
                                         let newBalance = balance + ppmt + overPayment
                                         ((int period, pmt, ipmt, ppmt, newBalance), newBalance)) principal
                     )
