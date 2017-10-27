@@ -3,10 +3,6 @@
   <Namespace>Excel.FinancialFunctions</Namespace>
 </Query>
 
-// So, what needs to happen is:
-// Use the start values until a period where an overpayment is supposed to be made
-// Subtract the overpayment value from the principal after all other calculations have been made
-// Start again passing the new recalculated principal to calculatePayments (and the new number of payments)
 
 // Defaults, ignore
 let fv = 0.00
@@ -19,12 +15,6 @@ let variableRate = 4.49
 let term = 25.00
 let fixedTerm = 5.00
 
-// Overpayments
-let overPayments = Map.ofList [
-                       (26.00, -500.00)
-                       (31.00, -500.00)
-                   ]
-
 // Pre-calculations
 let numberOfPayments = term * 12.00
 let numberOfFixedPayments = fixedTerm * 12.00
@@ -33,38 +23,53 @@ let numberOfVariablePayments = numberOfPayments - numberOfFixedPayments
 let fixedRateMonthlyInterest = (fixedRate / 100.00) / 12.00
 let variableRateMonthlyInterest = (variableRate / 100.00) / 12.00
 
-let calculatePayment rate numPeriods principal period overPayment =
-    let p = principal + overPayment
-    let pmt = Financial.Pmt(rate, numPeriods, p, fv, typ)
-    let ipmt = Financial.IPmt(rate, period, numPeriods, p, fv, typ)
-    let ppmt = Financial.PPmt(rate, period, numPeriods, p, fv, typ)
-    (pmt, ipmt, ppmt)
+// Overpayments
+let overPayments = Map.ofList [
+                       (26.00, -500.00)
+                       // (31.00, -500.00)
+                   ]
 
-let periods = [1.00..numberOfPayments]
-              |> List.map (fun i -> let rate = match i <= numberOfFixedPayments with
-                                               | true -> fixedRateMonthlyInterest
-                                               | false -> variableRateMonthlyInterest
-                                    let overPayment = match overPayments |> Map.tryFind i with
-                                                      | Some op -> op
-                                                      | None -> 0.00
-                                    (i, ((numberOfPayments - i) + 1.00), rate, overPayment))
+// Schedule creation functions
+let calculatePaymentValues interestRate numPeriods principal overPayment period =
+    let principal' = principal + overPayment
+    let pmt = Financial.Pmt(interestRate, numPeriods, principal', fv, typ)
+    let ipmt = Financial.IPmt(interestRate, period, numPeriods, principal', fv, typ)
+    let ppmt = Financial.PPmt(interestRate, period, numPeriods, principal', fv, typ)
+    (pmt + overPayment, ipmt, ppmt + overPayment)
+
+let monthlyInterestRate period =
+    match period <= numberOfFixedPayments with
+    | true -> fixedRateMonthlyInterest
+    | false -> variableRateMonthlyInterest
+    
+let overPaymentAmount period = 
+    match overPayments |> Map.tryFind period with
+    | Some op -> op
+    | None -> 0.00
+    
+let schedulePeriodData period = 
+    let rate = monthlyInterestRate period
+    let overPayment = overPaymentAmount period
+    (period, ((numberOfPayments - period) + 1.00), rate, overPayment)
+
+let createSchedulePeriod balance schedulePeriod =
+    let (period, numPeriods, interestRate, overPayment) = schedulePeriod
+    let (pmt, ipmt, ppmt) = calculatePaymentValues interestRate numPeriods balance overPayment 1.00
+    let newBalance = balance + ppmt
+    ((int period, pmt, ipmt, ppmt, newBalance), newBalance)
+
+let schedulePeriods = [1.00..numberOfPayments] |> List.map schedulePeriodData
+
+let (schedule, _) = schedulePeriods |> List.mapFold createSchedulePeriod principal
 
 // Display functions
 let fmt (n:float) = n.ToString("0.00")
 
-let writeRow row = 
-    let (per, p, ip, pp, t) = row
-    (per, (fmt p), (fmt ip), (fmt pp), (fmt t))
-
-let (results, _) = (periods 
-                    |> List.mapFold (fun balance paymentSlot ->
-                                        let (period, numPeriods, interestRate, overPayment) = paymentSlot
-                                        let (pmt, ipmt, ppmt) = calculatePayment interestRate numPeriods balance 1.00 overPayment
-                                        let newBalance = balance + ppmt + overPayment
-                                        ((int period, pmt, ipmt, ppmt, newBalance), newBalance)) principal
-                    )
+let writeScheduleRow schedulePeriod = 
+    let (period, payment, interestPayment, principalPayment, balance) = schedulePeriod
+    (period, (fmt payment), (fmt interestPayment), (fmt principalPayment), (fmt balance))
                     
-results
-|> List.map writeRow
+schedule
+|> List.map writeScheduleRow
 |> Dump
 |> ignore
