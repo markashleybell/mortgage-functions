@@ -3,7 +3,6 @@
   <Namespace>Excel.FinancialFunctions</Namespace>
 </Query>
 
-
 // Defaults, ignore
 let fv = 0.00
 let typ = PaymentDue.EndOfPeriod
@@ -25,8 +24,8 @@ let variableRateMonthlyInterest = (variableRate / 100.00) / 12.00
 
 // Overpayments
 let overPayments = Map.ofList [
-                       (26.00, -500.00)
-                       // (31.00, -500.00)
+                       //(26.00, -500.00)
+                       //(31.00, -500.00)
                    ]
 
 // Schedule creation functions
